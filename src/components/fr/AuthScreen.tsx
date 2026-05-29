@@ -16,7 +16,7 @@ export type LoginStyle = 'split' | 'centered';
 type Props = {
   theme: FRTheme;
   style?: LoginStyle;
-  onLogin: (role: Role) => void;
+  onLogin: (role: Role, email: string, password: string) => void;
 };
 
 function RouteMotifSplit() {
@@ -101,7 +101,7 @@ export function AuthScreen({ theme, style = 'split', onLogin }: Props) {
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
         <Text style={[styles.forgot, { color: theme.textSoft }]}>¿Olvidaste tu contraseña?</Text>
       </View>
-      <Pressable onPress={() => onLogin(role)} style={styles.cta}>
+      <Pressable onPress={() => onLogin(role, email, pass)} style={styles.cta}>
         <LinearGradient
           colors={[theme.primary, PALETTE.guindaDk]}
           start={{ x: 0, y: 0 }}
