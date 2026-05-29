@@ -245,15 +245,20 @@ export function UserHome({ theme, cardLayout = 'rich' }: Props) {
 
   const routes = useMemo<MapRoute[]>(
     () =>
-      currentRoutes.map((r) => ({
-        id: r.id,
-        path: r.path,
-        color: r.color,
-        width: r.id === active ? 8 : 5,
-        glow: r.id === active,
-        active: r.id === active,
-        coordinates: r.coordinates || [],
-      })),
+      currentRoutes.map((r) => {
+        // If it's a google polyline from the API or mock file, we shouldn't try to parse it as SVG
+        const isGooglePolyline = !r.path.startsWith('M');
+
+        return {
+          id: r.id,
+          path: isGooglePolyline ? '' : r.path, // Si no es SVG, pasamos cadena vacía al Svg Path
+          color: r.color,
+          width: r.id === active ? 8 : 5,
+          glow: r.id === active,
+          active: r.id === active,
+          coordinates: r.coordinates || [],
+        };
+      }),
     [active, currentRoutes],
   );
 
