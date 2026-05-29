@@ -1,9 +1,8 @@
 import { memo, useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import * as Location from 'expo-location';
-import Svg, { Circle, Path } from 'react-native-svg';
 
+import { CameraModal, type CapturedPhoto } from '@/components/fr/CameraModal';
 import { submitObstruccion } from '@/lib/api';
 import type { FRTheme } from '@/constants/fastroute-theme';
 
@@ -14,98 +13,82 @@ interface CameraFABProps {
 }
 
 const CameraFAB = memo(({ theme, userId, bottomOffset = 24 }: CameraFABProps) => {
-  const [loading, setLoading] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
-  const handlePress = useCallback(async () => {
-    setLoading(true);
-    try {
-      const camPerm = await ImagePicker.requestCameraPermissionsAsync();
-      if (camPerm.status !== 'granted') {
-        Alert.alert(
-          'Permiso de cámara requerido',
-          'Activa el acceso a la cámara en los ajustes del sistema.',
-          [{ text: 'OK' }],
-        );
-        return;
+  const handleCapture = useCallback(
+    async (photo: CapturedPhoto) => {
+      setUploading(true);
+      try {
+        const locPerm = await Location.requestForegroundPermissionsAsync();
+        if (locPerm.status !== Location.PermissionStatus.GRANTED) {
+          Alert.alert(
+            'Permiso de ubicación requerido',
+            'Activa el acceso a la ubicación en los ajustes del sistema.',
+            [{ text: 'OK' }],
+          );
+          return;
+        }
+
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+
+        await submitObstruccion({
+          user_id: userId,
+          latitud: pos.coords.latitude,
+          longitud: pos.coords.longitude,
+          foto: { uri: photo.uri, name: photo.fileName, type: photo.mimeType },
+          timestamp: new Date().toISOString(),
+        });
+
+        Alert.alert('Reporte enviado', 'La obstrucción fue reportada exitosamente. ¡Gracias por contribuir!');
+      } catch (err) {
+        console.error('[CameraFAB]', err);
+        Alert.alert('Error', 'No se pudo enviar el reporte. Intenta de nuevo.');
+      } finally {
+        setUploading(false);
       }
+    },
+    [userId],
+  );
 
-      const locPerm = await Location.requestForegroundPermissionsAsync();
-      if (locPerm.status !== Location.PermissionStatus.GRANTED) {
-        Alert.alert(
-          'Permiso de ubicación requerido',
-          'Activa el acceso a la ubicación en los ajustes del sistema.',
-          [{ text: 'OK' }],
-        );
-        return;
-      }
-
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
-        quality: 0.8,
-        allowsEditing: false,
-      });
-
-      if (result.canceled || !result.assets?.length) return;
-
-      const photo = result.assets[0];
-
-      await submitObstruccion({
-        user_id: userId,
-        latitud: pos.coords.latitude,
-        longitud: pos.coords.longitude,
-        foto: {
-          uri: photo.uri,
-          name: photo.fileName ?? `obstruccion_${photo.uri.split('/').pop() ?? 'foto'}.jpg`,
-          type: photo.mimeType ?? 'image/jpeg',
-        },
-      });
-
-      Alert.alert('Reporte enviado', 'La obstrucción fue reportada exitosamente. ¡Gracias por contribuir!');
-    } catch (err) {
-      console.error('[CameraFAB]', err);
-      Alert.alert('Error', 'No se pudo acceder a la cámara o ubicación. Intenta de nuevo.');
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
+  const shadowStyle = Platform.select({
+    web: { boxShadow: `0px 4px 10px 0px ${theme.shadowColor}55` },
+    default: {
+      shadowColor: theme.shadowColor,
+      shadowOpacity: theme.shadowOpacity,
+      shadowOffset: { width: 0, height: 4 },
+      shadowRadius: 10,
+    },
+  });
 
   return (
-    <TouchableOpacity
-      style={[
-        styles.fab,
-        {
-          backgroundColor: theme.primary,
-          shadowColor: theme.shadowColor,
-          shadowOpacity: theme.shadowOpacity,
-          bottom: bottomOffset,
-        },
-      ]}
-      onPress={handlePress}
-      disabled={loading}
-      activeOpacity={0.82}
-      accessibilityRole="button"
-      accessibilityLabel="Reportar obstrucción"
-      accessibilityHint="Toca para fotografiar y reportar una obstrucción peatonal o accidente"
-    >
-      {loading ? (
-        <ActivityIndicator color={theme.primaryText} size="small" />
-      ) : (
-        <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-          <Path
-            d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
-            stroke={theme.primaryText}
-            strokeWidth={1.6}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <Circle cx={12} cy={13} r={4} stroke={theme.primaryText} strokeWidth={1.6} />
-        </Svg>
-      )}
-    </TouchableOpacity>
+    <>
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: theme.primary, bottom: bottomOffset }, shadowStyle]}
+        onPress={() => setShowCamera(true)}
+        disabled={uploading}
+        activeOpacity={0.82}
+        accessibilityRole="button"
+        accessibilityLabel="Reportar obstrucción"
+        accessibilityHint="Toca para abrir la cámara y reportar una obstrucción peatonal o accidente"
+      >
+        {uploading ? (
+          <ActivityIndicator color={theme.primaryText} size="small" />
+        ) : (
+          <Text style={[styles.label, { color: theme.primaryText }]}>
+            Reportar{'\n'}accidente
+          </Text>
+        )}
+      </TouchableOpacity>
+
+      <CameraModal
+        visible={showCamera}
+        onClose={() => setShowCamera(false)}
+        onCapture={handleCapture}
+      />
+    </>
   );
 });
 
@@ -115,14 +98,18 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 20,
-    width: 56,
-    height: 56,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
     elevation: 8,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 17,
   },
 });
 

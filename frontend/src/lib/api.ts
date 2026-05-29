@@ -76,6 +76,7 @@ export type ObstruccionPayload = {
   latitud: number;
   longitud: number;
   foto: ObstruccionFoto;
+  timestamp: string;
 };
 
 export function submitObstruccion(payload: ObstruccionPayload) {
@@ -83,6 +84,7 @@ export function submitObstruccion(payload: ObstruccionPayload) {
   form.append('user_id', payload.user_id);
   form.append('latitud', String(payload.latitud));
   form.append('longitud', String(payload.longitud));
+  form.append('timestamp', payload.timestamp);
   form.append('foto', payload.foto as unknown as Blob);
   return api.post('/obstrucciones', form, {
     headers: { 'Content-Type': 'multipart/form-data' },

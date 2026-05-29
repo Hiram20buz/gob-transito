@@ -45,7 +45,13 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Necesitamos acceso a tu cámara para fotografiar paradas de taxi."
+          "cameraPermission": "Necesitamos acceso a tu cámara para fotografiar obstrucciones."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Necesitamos acceso a tu cámara para fotografiar obstrucciones peatonales o accidentes."
         }
       ]
     ],
