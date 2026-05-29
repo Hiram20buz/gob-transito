@@ -22,8 +22,18 @@ export type RegisterPayload = {
   ciudad: string;
   correo_electronico: string;
   password: string;
+  role: string;
+};
+
+export type LoginPayload = {
+  correo_electronico: string;
+  password: string;
 };
 
 export function registerUser(payload: RegisterPayload) {
   return api.post('/users', payload);
+}
+
+export function loginUser(payload: LoginPayload) {
+  return api.post('/users/login', payload);
 }

@@ -8,7 +8,6 @@ type Props = { color?: string };
 export function FRStatusBar({ color = '#2B0A12' }: Props) {
   return (
     <View style={styles.bar} pointerEvents="none">
-      <Text style={[styles.time, { color }]}>9:41</Text>
       <View style={styles.icons}>
         <Svg width={17} height={12} viewBox="0 0 17 12" fill={color}>
           <Rect x="0" y="7" width="3" height="5" rx="1" />

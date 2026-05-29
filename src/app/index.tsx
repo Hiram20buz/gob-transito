@@ -6,32 +6,36 @@ import { AuthScreen, LoginStyle } from '@/components/fr/AuthScreen';
 import { Role } from '@/components/fr/RoleToggle';
 import { TEST_USERS } from '@/constants/fastroute-mock';
 import { useFRTheme } from '@/constants/fastroute-theme';
+import { loginUser } from '@/lib/api';
 
 export default function AuthRoute() {
   const theme = useFRTheme();
   const [loginStyle] = useState<LoginStyle>('split');
 
-  function handleLogin(role: Role, email: string, password: string) {
-    const trimmedEmail = email.trim().toLowerCase();
-    const expected = TEST_USERS[role];
-
-    if (!trimmedEmail || !password) {
-      Alert.alert(
-        'FastRoute',
-        `Credenciales de prueba:\n\nUsuario: ${TEST_USERS.user.email} / ${TEST_USERS.user.password}\nAdmin: ${TEST_USERS.admin.email} / ${TEST_USERS.admin.password}`,
-      );
+  async function handleLogin(email: string, pass: string, role: Role) {
+    if (!email.trim() || !pass.trim()) {
+      Alert.alert('Faltan datos', 'Ingresa tu correo y contraseña.');
       return;
     }
 
-    if (trimmedEmail !== expected.email || password !== expected.password) {
-      Alert.alert(
-        'Credenciales incorrectas',
-        `Para entrar como ${role === 'admin' ? 'Administrador' : 'Usuario'} usa:\n\n${expected.email}\n${expected.password}`,
-      );
-      return;
+    try {
+      const response = await loginUser({
+        correo_electronico: email,
+        password: pass,
+      });
+      
+      // Navegar a la pantalla de user
+      router.replace('/user');
+    } catch (e: any) {
+      // El backend nos devuelve un HTTP 401 si las credenciales fallan, 
+      // y configuramos el backend para devolver exactamente "error al iniciar sesion"
+      const msg =
+        e?.response?.data?.detail ||
+        e?.response?.data?.message ||
+        'error al iniciar sesion';
+        
+      Alert.alert('Error', String(msg));
     }
-
-    router.replace(role === 'admin' ? '/admin' : '/user');
   }
 
   return <AuthScreen theme={theme} style={loginStyle} onLogin={handleLogin} />;

@@ -16,7 +16,7 @@ export type LoginStyle = 'split' | 'centered';
 type Props = {
   theme: FRTheme;
   style?: LoginStyle;
-  onLogin: (role: Role, email: string, password: string) => void;
+  onLogin: (email: string, pass: string, role: Role) => void;
 };
 
 function RouteMotifSplit() {
@@ -101,7 +101,7 @@ export function AuthScreen({ theme, style = 'split', onLogin }: Props) {
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
         <Text style={[styles.forgot, { color: theme.textSoft }]}>¿Olvidaste tu contraseña?</Text>
       </View>
-      <Pressable onPress={() => onLogin(role, email, pass)} style={styles.cta}>
+      <Pressable onPress={() => onLogin(email, pass, role)} style={styles.cta}>
         <LinearGradient
           colors={[theme.primary, PALETTE.guindaDk]}
           start={{ x: 0, y: 0 }}
@@ -117,7 +117,7 @@ export function AuthScreen({ theme, style = 'split', onLogin }: Props) {
         <View style={[styles.dividerLine, { backgroundColor: theme.line }]} />
       </View>
       <View style={{ flexDirection: 'row', gap: 10 }}>
-        {['Google', 'Apple'].map((p) => (
+        {['Google'].map((p) => (
           <Pressable
             key={p}
             style={[
@@ -145,7 +145,6 @@ export function AuthScreen({ theme, style = 'split', onLogin }: Props) {
   if (style === 'split') {
     return (
       <View style={[styles.root, { backgroundColor: theme.bg }]}>
-        <FRStatusBar color="#fff" />
         <LinearGradient
           colors={[theme.primary, PALETTE.guindaDk]}
           start={{ x: 0, y: 0 }}
@@ -186,7 +185,6 @@ export function AuthScreen({ theme, style = 'split', onLogin }: Props) {
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 0.7 }}
       style={[styles.root, { padding: 26, justifyContent: 'center' }]}>
-      <FRStatusBar color="#fff" />
       <RouteMotifCentered />
       <View style={styles.centeredLockup}>
         <Logo size={54} accent={theme.gold} />

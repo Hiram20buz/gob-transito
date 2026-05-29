@@ -11,15 +11,19 @@ import {
   StyleSheet,
   Text,
   View,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { StatusBar } from 'expo-status-bar';
 
 import { Field } from '@/components/fr/Field';
 import { Icon } from '@/components/fr/Icon';
 import { Logo, Wordmark } from '@/components/fr/Logo';
-import { FRStatusBar } from '@/components/fr/StatusBar';
 import { FR_FONTS, PALETTE, useFRTheme } from '@/constants/fastroute-theme';
 import { registerUser } from '@/lib/api';
+import { estadosRepublica } from '@/utils/constant';
 
 type FormState = {
   nombre: string;
@@ -29,6 +33,7 @@ type FormState = {
   ciudad: string;
   correo_electronico: string;
   password: string;
+  role: string;
 };
 
 const EMPTY: FormState = {
@@ -39,6 +44,7 @@ const EMPTY: FormState = {
   ciudad: '',
   correo_electronico: '',
   password: '',
+  role: 'user',
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -58,16 +64,37 @@ export default function RegisterScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [birthDate, setBirthDate] = useState<Date | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [estadoPickerOpen, setEstadoPickerOpen] = useState(false);
+  const [ciudadPickerOpen, setCiudadPickerOpen] = useState(false);
+
+  // Derived state for available cities
+  const selectedEstadoObj = estadosRepublica.find(e => e.nombre === form.estado);
+  const availableCiudades = selectedEstadoObj ? selectedEstadoObj.ciudades : [];
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function handleEstadoSelect(estadoNombre: string) {
+    if (form.estado !== estadoNombre) {
+      setForm(f => ({ ...f, estado: estadoNombre, ciudad: '' }));
+    }
+    setEstadoPickerOpen(false);
+  }
+
+  function handleCiudadSelect(ciudadNombre: string) {
+    set('ciudad', ciudadNombre);
+    setCiudadPickerOpen(false);
+  }
+
   function onPickDate(event: DateTimePickerEvent, selected?: Date) {
-    if (Platform.OS === 'android') setPickerOpen(false);
-    if (event.type === 'dismissed' || !selected) return;
+    if (event.type === 'dismissed' || !selected) {
+      setPickerOpen(false);
+      return;
+    }
     setBirthDate(selected);
     set('fecha_de_nacimiento', toDDMMYYYY(selected));
+    setPickerOpen(false);
   }
 
   function validate(): string | null {
@@ -95,6 +122,7 @@ export default function RegisterScreen() {
       ]);
     } catch (e: any) {
       const msg =
+        e?.response?.data?.detail ||
         e?.response?.data?.message ||
         e?.response?.data?.error ||
         e?.message ||
@@ -107,7 +135,7 @@ export default function RegisterScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
-      <FRStatusBar color="#fff" />
+      <StatusBar style="light" />
       <LinearGradient
         colors={[theme.primary, PALETTE.guindaDk]}
         start={{ x: 0, y: 0 }}
@@ -205,23 +233,104 @@ export default function RegisterScreen() {
                 />
               )}
 
-              <Field
-                icon="layers"
-                placeholder="Estado"
-                value={form.estado}
-                onChangeText={(v) => set('estado', v)}
-                theme={theme}
-                autoCapitalize="sentences"
-              />
+              <Pressable
+                onPress={() => setEstadoPickerOpen(true)}
+                style={[
+                  styles.dateField,
+                  {
+                    backgroundColor: theme.dark ? 'rgba(255,255,255,0.06)' : '#fff',
+                    borderColor: theme.line,
+                  },
+                ]}>
+                <Icon name="layers" size={19} color={theme.gold} stroke={2} />
+                <Text
+                  style={[
+                    styles.dateText,
+                    { color: form.estado ? theme.text : theme.textFaint },
+                  ]}>
+                  {form.estado || 'Estado'}
+                </Text>
+                <Icon name="chevD" size={16} color={theme.textFaint} />
+              </Pressable>
 
-              <Field
-                icon="pin"
-                placeholder="Ciudad"
-                value={form.ciudad}
-                onChangeText={(v) => set('ciudad', v)}
-                theme={theme}
-                autoCapitalize="sentences"
-              />
+              <Modal
+                visible={estadoPickerOpen}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setEstadoPickerOpen(false)}>
+                <View style={styles.modalOverlay}>
+                  <View style={[styles.modalContent, { backgroundColor: theme.surface, borderColor: theme.line }]}>
+                    <Text style={[styles.modalTitle, { color: theme.text }]}>Selecciona un estado</Text>
+                    <FlatList
+                      data={estadosRepublica}
+                      keyExtractor={(item) => item.nombre}
+                      renderItem={({ item }) => (
+                        <Pressable
+                          style={[styles.modalItem, { borderBottomColor: theme.line }]}
+                          onPress={() => handleEstadoSelect(item.nombre)}>
+                          <Text style={[styles.modalItemText, { color: theme.text }]}>{item.nombre}</Text>
+                        </Pressable>
+                      )}
+                    />
+                    <Pressable style={styles.modalCloseBtn} onPress={() => setEstadoPickerOpen(false)}>
+                      <Text style={styles.modalCloseText}>Cerrar</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </Modal>
+
+              <Pressable
+                onPress={() => {
+                  if (form.estado) {
+                    setCiudadPickerOpen(true);
+                  } else {
+                    Alert.alert('Selecciona un estado primero');
+                  }
+                }}
+                style={[
+                  styles.dateField,
+                  {
+                    backgroundColor: theme.dark ? 'rgba(255,255,255,0.06)' : '#fff',
+                    borderColor: theme.line,
+                    opacity: form.estado ? 1 : 0.6,
+                  },
+                ]}>
+                <Icon name="pin" size={19} color={theme.gold} stroke={2} />
+                <Text
+                  style={[
+                    styles.dateText,
+                    { color: form.ciudad ? theme.text : theme.textFaint },
+                  ]}>
+                  {form.ciudad || 'Ciudad'}
+                </Text>
+                <Icon name="chevD" size={16} color={theme.textFaint} />
+              </Pressable>
+
+              <Modal
+                visible={ciudadPickerOpen}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setCiudadPickerOpen(false)}>
+                <View style={styles.modalOverlay}>
+                  <View style={[styles.modalContent, { backgroundColor: theme.surface, borderColor: theme.line }]}>
+                    <Text style={[styles.modalTitle, { color: theme.text }]}>Selecciona una ciudad</Text>
+                    <FlatList
+                      data={availableCiudades}
+                      keyExtractor={(item) => item}
+                      renderItem={({ item }) => (
+                        <Pressable
+                          style={[styles.modalItem, { borderBottomColor: theme.line }]}
+                          onPress={() => handleCiudadSelect(item)}>
+                          <Text style={[styles.modalItemText, { color: theme.text }]}>{item}</Text>
+                        </Pressable>
+                      )}
+                    />
+                    <Pressable style={styles.modalCloseBtn} onPress={() => setCiudadPickerOpen(false)}>
+                      <Text style={styles.modalCloseText}>Cerrar</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </Modal>
 
               <Field
                 icon="mail"
@@ -291,7 +400,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 36,
+    marginTop: 8,
     marginBottom: 18,
   },
   backBtn: {
@@ -381,5 +490,47 @@ const styles = StyleSheet.create({
     fontFamily: FR_FONTS.body,
     fontSize: 12.5,
     marginTop: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    padding: 20,
+    maxHeight: '70%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontFamily: FR_FONTS.display,
+    fontSize: 18,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalItem: {
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  modalItemText: {
+    fontFamily: FR_FONTS.body,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  modalCloseBtn: {
+    marginTop: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalCloseText: {
+    fontFamily: FR_FONTS.bodyExtra,
+    fontSize: 16,
+    color: '#D42351', // Assuming guinda accent for close
   },
 });
