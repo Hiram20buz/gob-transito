@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const baseURL = process.env.EXPO_PUBLIC_API_URL;
+const baseURL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 if (!baseURL) {
   console.warn(
@@ -30,10 +30,37 @@ export type LoginPayload = {
   password: string;
 };
 
+export type RecoveryRequestPayload = {
+  correo_electronico: string;
+};
+
+export type RecoveryVerifyPayload = {
+  correo_electronico: string;
+  code: string;
+};
+
+export type PasswordResetPayload = {
+  correo_electronico: string;
+  code: string;
+  new_password: string;
+};
+
 export function registerUser(payload: RegisterPayload) {
   return api.post('/users', payload);
 }
 
 export function loginUser(payload: LoginPayload) {
   return api.post('/users/login', payload);
+}
+
+export function requestPasswordRecovery(payload: RecoveryRequestPayload) {
+  return api.post('/users/password-recovery', payload);
+}
+
+export function verifyRecoveryCode(payload: RecoveryVerifyPayload) {
+  return api.post('/users/verify-recovery-code', payload);
+}
+
+export function resetPassword(payload: PasswordResetPayload) {
+  return api.post('/users/reset-password', payload);
 }

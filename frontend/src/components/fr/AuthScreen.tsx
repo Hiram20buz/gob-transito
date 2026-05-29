@@ -99,7 +99,9 @@ export function AuthScreen({ theme, style = 'split', onLogin }: Props) {
         />
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
-        <Text style={[styles.forgot, { color: theme.textSoft }]}>¿Olvidaste tu contraseña?</Text>
+        <Pressable onPress={() => router.push('/forgot-password' as any)}>
+          <Text style={[styles.forgot, { color: theme.textSoft }]}>¿Olvidaste tu contraseña?</Text>
+        </Pressable>
       </View>
       <Pressable onPress={() => onLogin(email, pass, role)} style={styles.cta}>
         <LinearGradient
