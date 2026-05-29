@@ -15,8 +15,9 @@ def get_user_by_email(email: str) -> Optional[dict]:
     """Busca un usuario por correo electrónico para evitar duplicados."""
     db = _get_db()
     users_ref = db.collection(COLLECTION_NAME)
-    # Busca donde el correo coincida, usando argumentos posicionales simples
-    query = users_ref.where("correo_electronico", "==", email).limit(1).stream()
+    from google.cloud.firestore_v1.base_query import FieldFilter
+    # Busca donde el correo coincida, usando la sintaxis recomendada por Google
+    query = users_ref.where(filter=FieldFilter("correo_electronico", "==", email)).limit(1).stream()
     
     for doc in query:
         return doc.to_dict()
@@ -96,7 +97,8 @@ def authenticate_user(login_data: UserLogin) -> UserResponse:
     # 3. Retornar los datos limpios si el login es correcto
     # Primero necesitamos encontrar el ID real de Firestore, lo haremos con una pequeña consulta
     db = _get_db()
-    query = db.collection(COLLECTION_NAME).where("correo_electronico", "==", login_data.correo_electronico).limit(1).stream()
+    from google.cloud.firestore_v1.base_query import FieldFilter
+    query = db.collection(COLLECTION_NAME).where(filter=FieldFilter("correo_electronico", "==", login_data.correo_electronico)).limit(1).stream()
     
     doc_id = None
     for doc in query:

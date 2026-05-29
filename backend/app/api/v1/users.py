@@ -1,8 +1,15 @@
 from fastapi import APIRouter, status
 from typing import List
 
-from app.schemas.user import UserCreate, UserResponse, UserLogin
-from app.services import user_service
+from app.schemas.user import (
+    UserCreate, 
+    UserResponse, 
+    UserLogin,
+    PasswordRecoveryRequest,
+    PasswordRecoveryVerify,
+    PasswordReset
+)
+from app.services import user_service, auth_service
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -20,6 +27,25 @@ def login_user(login_data: UserLogin):
     Inicia sesión verificando el correo electrónico y la contraseña.
     """
     return user_service.authenticate_user(login_data)
+
+@router.post("/password-recovery")
+def request_password_recovery(payload: PasswordRecoveryRequest):
+    """Genera un código de 6 dígitos y simula el envío por correo."""
+    return auth_service.request_password_recovery(payload.correo_electronico)
+
+@router.post("/verify-recovery-code")
+def verify_recovery_code(payload: PasswordRecoveryVerify):
+    """Verifica si el código ingresado es correcto y no ha expirado."""
+    return auth_service.verify_recovery_code(payload.correo_electronico, payload.code)
+
+@router.post("/reset-password")
+def reset_password(payload: PasswordReset):
+    """Actualiza la contraseña en la base de datos tras verificar el código."""
+    return auth_service.reset_password(
+        payload.correo_electronico, 
+        payload.code, 
+        payload.new_password
+    )
 
 @router.get("", response_model=List[UserResponse])
 def get_all_users():

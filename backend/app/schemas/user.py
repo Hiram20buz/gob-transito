@@ -45,3 +45,15 @@ class UserResponse(UserBase):
     
     class Config:
         from_attributes = True
+
+class PasswordRecoveryRequest(BaseModel):
+    correo_electronico: EmailStr
+
+class PasswordRecoveryVerify(BaseModel):
+    correo_electronico: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+
+class PasswordReset(BaseModel):
+    correo_electronico: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+    new_password: str = Field(..., min_length=8)
