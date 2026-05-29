@@ -2,6 +2,7 @@
 
 ###  Plataforma de rutas en tiempo real donde la ciudadanía reporta obstrucciones y accidentes, y un panel admin valida incidencias para optimizar la movilidad urbana.
 
+[▶ Ver demo en YouTube](https://www.youtube.com/shorts/iS3bzyNo9UM)
 
 <img width="1206" height="2622" alt="1_login" src="https://github.com/user-attachments/assets/46d5c78b-0c4b-4ed9-85aa-6fbe9f3fba3c" />
 
