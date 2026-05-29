@@ -14,6 +14,7 @@ import {
   Pressable,
   StyleSheet,
   View,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import MapView, { PROVIDER_GOOGLE, type Region } from 'react-native-maps';
@@ -119,7 +120,7 @@ export const MapBase = memo(
       {showMap && (
         <MapView
           ref={mapRef}
-          provider={PROVIDER_GOOGLE}
+          provider={Platform.OS === 'ios' ? undefined : PROVIDER_GOOGLE}
           style={StyleSheet.absoluteFill}
           initialRegion={initialRegion}
           pointerEvents={interactive ? 'none' : 'auto'}

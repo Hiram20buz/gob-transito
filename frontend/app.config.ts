@@ -21,4 +21,8 @@ export default (): ExpoConfig => ({
       },
     },
   },
+  plugins: [
+    ...(base.plugins ?? []),
+    'react-native-maps',   // ← esto faltaba
+  ],
 });
