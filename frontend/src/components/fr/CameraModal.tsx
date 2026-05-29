@@ -99,17 +99,18 @@ const CameraModal = memo(({ visible, onClose, onCapture }: CameraModalProps) => 
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
       if (!photo) return;
-      slideOut(() =>
+      slideOut(() => {
+        onClose();
         onCapture({
           uri: photo.uri,
           mimeType: 'image/jpeg',
           fileName: `obstruccion_${photo.uri.split('/').pop() ?? 'foto'}.jpg`,
-        }),
-      );
+        });
+      });
     } finally {
       setCapturing(false);
     }
-  }, [capturing, flashOpacity, slideOut, onCapture]);
+  }, [capturing, flashOpacity, slideOut, onCapture, onClose]);
 
   if (!visible) return null;
 

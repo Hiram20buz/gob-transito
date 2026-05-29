@@ -22,15 +22,20 @@ class CloudStorage:
                 return
 
             print(f"Inicializando conexión a Storage Bucket en {settings.BUCKET_URL}...")
-            
-            # Crear el cliente S3 apuntando a la BUCKET_URL (que sirve como endpoint para R2/AWS)
-            self.client = boto3.client(
-                service_name='s3',
-                endpoint_url=settings.BUCKET_URL,
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                aws_session_token=settings.AWS_SESSION_TOKEN, # Opcional
-            )
+
+            # Crear el cliente S3 apuntando a la BUCKET_URL (que sirve como endpoint para R2/AWS).
+            # El session token solo aplica a credenciales temporales de AWS STS;
+            # Cloudflare R2 lo rechaza con InvalidArgument (X-Amz-Security-Token).
+            client_kwargs = {
+                "service_name": "s3",
+                "endpoint_url": settings.BUCKET_URL,
+                "aws_access_key_id": settings.AWS_ACCESS_KEY_ID,
+                "aws_secret_access_key": settings.AWS_SECRET_ACCESS_KEY,
+            }
+            if settings.AWS_SESSION_TOKEN:
+                client_kwargs["aws_session_token"] = settings.AWS_SESSION_TOKEN
+
+            self.client = boto3.client(**client_kwargs)
             print("Storage inicializado correctamente.")
 
     def get_client(self):
