@@ -57,7 +57,6 @@ async function fetchGoogleDirections(
   // Si no hay API KEY, devolvemos las rutas matemáticas curvadas de antes
   if (!GOOGLE_API_KEY || GOOGLE_API_KEY === 'TU_API_KEY_AQUI') {
     console.warn('Falta GOOGLE_API_KEY. Usando rutas simuladas.');
-    // Alert.alert('Falta API Key', 'No se encontró la llave de Google Maps en las variables de entorno (.env). Se mostrará una línea simulada.');
     return generateMockRoutes(start, end);
   }
 
@@ -72,15 +71,6 @@ async function fetchGoogleDirections(
 
     if (result.status !== 'OK') {
       console.warn('Google Directions API error:', result.status, result.error_message);
-      
-      // Mostrar alerta con el motivo del error para diagnosticar por qué la API Key falla
-      /*
-      Alert.alert(
-        'Falla en API de Google Maps', 
-        `Código: ${result.status}\nMensaje: ${result.error_message || 'Revisa permisos de Directions API'}\n\nLa app dibujará rutas curvas simuladas.`
-      );
-      */
-      
       return generateMockRoutes(start, end);
     }
 
@@ -113,7 +103,7 @@ async function fetchGoogleDirections(
         traffic: traffic as any,
         trafficLvl: trafficLvl as any,
         cost: index === 0 ? 38 : index === 1 ? 22 : 18,
-        path: r.overview_polyline.points, // Guardamos la string original por si acaso
+        path: '',
         coordinates: decodedCoords,
       };
     });
