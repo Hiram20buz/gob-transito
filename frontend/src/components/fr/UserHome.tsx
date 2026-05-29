@@ -204,16 +204,22 @@ function getHeading(p1: {latitude: number, longitude: number}, p2: {latitude: nu
 export function UserHome({ theme, cardLayout = 'rich' }: Props) {
   const [active, setActive] = useState('r1');
   const [open, setOpen] = useState(false);
-  const [from, setFrom] = useState('Casa');
-  const [to, setTo] = useState('Macroplaza Insurgentes');
+
+  // Estados reales (pueden ser mocks o lugares de la API)
+  const [startLoc, setStartLoc] = useState(() => MOCK_LOCATIONS_DATA[0]);
+  const [endLoc, setEndLoc] = useState(() => MOCK_LOCATIONS_DATA[1]);
+  
+  // Lo que escribe el usuario
+  const [fromText, setFromText] = useState(MOCK_LOCATIONS_DATA[0].name);
+  const [toText, setToText] = useState(MOCK_LOCATIONS_DATA[1].name);
+
   const [focusedField, setFocusedField] = useState<'from' | 'to' | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [placesSuggestions, setPlacesSuggestions] = useState<Array<{name: string, placeId?: string, coords?: any}>>([]);
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const mapRef = useRef<MapBaseHandle>(null);
   const { coords, requestAndGet } = useLocation();
-
-  const startLoc = useMemo(() => MOCK_LOCATIONS_DATA.find(l => l.name === from) ?? MOCK_LOCATIONS_DATA[0], [from]);
-  const endLoc = useMemo(() => MOCK_LOCATIONS_DATA.find(l => l.name === to) ?? MOCK_LOCATIONS_DATA[1], [to]);
 
   const [currentRoutes, setCurrentRoutes] = useState<Recommended[]>(() => 
     generateMockRoutes(startLoc.coords, endLoc.coords)
@@ -252,19 +258,132 @@ export function UserHome({ theme, cardLayout = 'rich' }: Props) {
     [active, currentRoutes],
   );
 
-  const handleSelectLocation = useCallback((loc: string) => {
-    if (focusedField === 'from') setFrom(loc);
-    else if (focusedField === 'to') setTo(loc);
-    setFocusedField(null);
-    Keyboard.dismiss();
-    setActive('r1');
-  }, [focusedField]);
+  const fetchPlaces = async (text: string) => {
+    if (!text.trim()) {
+      setPlacesSuggestions([]);
+      return;
+    }
 
-  const filteredLocations = useMemo(() => {
-    if (!focusedField) return [];
-    const query = (focusedField === 'from' ? from : to).toLowerCase();
-    return MOCK_LOCATIONS_DATA.map(m => m.name).filter(loc => loc.toLowerCase().includes(query)).slice(0, 5);
-  }, [focusedField, from, to]);
+    // Buscamos primero en Mocks
+    const query = text.toLowerCase();
+    const mockMatches = MOCK_LOCATIONS_DATA.filter(loc => loc.name.toLowerCase().includes(query));
+
+    if (!GOOGLE_API_KEY || GOOGLE_API_KEY === 'TU_API_KEY_AQUI') {
+      setPlacesSuggestions(mockMatches);
+      return;
+    }
+
+    try {
+      // Búsqueda autocompletada en Google Places (restringido a MX/Tijuana preferentemente)
+      // Agregué sessiontoken preventivo y omito key si está fallando el origen HTTP de iOS
+      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(text)}&components=country:mx&location=32.5149,-117.0382&radius=50000&key=${GOOGLE_API_KEY}&language=es`;
+      
+      console.log('Buscando en Places:', text);
+      const res = await fetch(url);
+      const json = await res.json();
+      
+      if (json.status === 'REQUEST_DENIED') {
+         console.warn('Places API bloqueada:', json.error_message);
+         setPlacesSuggestions(mockMatches.slice(0, 5));
+         return;
+      }
+      
+      if (json.status === 'OK' && json.predictions) {
+        const apiPlaces = json.predictions.map((p: any) => ({
+          name: p.structured_formatting?.main_text 
+            ? `${p.structured_formatting.main_text} - ${p.structured_formatting.secondary_text || ''}`
+            : p.description,
+          placeId: p.place_id,
+        }));
+        
+        // Mezclamos mocks con API (dando prioridad a mocks si hay)
+        const combined = [...mockMatches];
+        apiPlaces.forEach((apiP: any) => {
+          if (!combined.some(m => m.name.toLowerCase() === apiP.name.toLowerCase())) {
+            combined.push(apiP);
+          }
+        });
+        setPlacesSuggestions(combined.slice(0, 5));
+      } else {
+        setPlacesSuggestions(mockMatches.slice(0, 5));
+      }
+    } catch (e) {
+      setPlacesSuggestions(mockMatches.slice(0, 5));
+    }
+  };
+
+  const handleTextChange = (field: 'from' | 'to', text: string) => {
+    if (field === 'from') setFromText(text);
+    else setToText(text);
+
+    if (searchTimeout) clearTimeout(searchTimeout);
+    
+    // Si borró todo, limpiar
+    if (text.trim() === '') {
+      setPlacesSuggestions([]);
+      return;
+    }
+
+    // Debounce de 400ms para no saturar la API
+    const timeout = setTimeout(() => {
+      fetchPlaces(text);
+    }, 400);
+    setSearchTimeout(timeout);
+  };
+
+  const handleSelectLocation = async (item: {name: string, placeId?: string, coords?: any}) => {
+    Keyboard.dismiss();
+    setPlacesSuggestions([]);
+    
+    let finalCoords = item.coords;
+
+    // Si viene de Google Places y no tiene coords, hacemos un fetch a Geocoding/Place Details para sacarlas
+    if (!finalCoords && item.placeId && GOOGLE_API_KEY) {
+      try {
+        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${item.placeId}&fields=geometry&key=${GOOGLE_API_KEY}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json.status === 'OK' && json.result?.geometry?.location) {
+          finalCoords = {
+            latitude: json.result.geometry.location.lat,
+            longitude: json.result.geometry.location.lng,
+          };
+        }
+      } catch (e) {
+        console.error('No se pudo obtener coordenadas del lugar', e);
+      }
+    }
+
+    // Fallback: Si falló, la ponemos en Tijuana centro
+    if (!finalCoords) {
+      finalCoords = { latitude: 32.5149, longitude: -117.0382 };
+    }
+
+    const newLoc = { name: item.name, coords: finalCoords };
+
+    if (focusedField === 'from') {
+      setFromText(item.name);
+      setStartLoc(newLoc);
+    } else if (focusedField === 'to') {
+      setToText(item.name);
+      setEndLoc(newLoc);
+    }
+    
+    setFocusedField(null);
+    setActive('r1');
+  };
+
+  const handleSwap = () => {
+    const tempText = fromText;
+    setFromText(toText);
+    setToText(tempText);
+
+    const tempLoc = startLoc;
+    setStartLoc(endLoc);
+    setEndLoc(tempLoc);
+
+    setActive('r1');
+  };
 
   const act = currentRoutes.find((r) => r.id === active) || currentRoutes[0];
 
@@ -329,29 +448,31 @@ export function UserHome({ theme, cardLayout = 'rich' }: Props) {
         <View style={[styles.topScrim, { zIndex: 10 }]}>
           <FromTo
             theme={theme}
-            from={from}
-            to={to}
-            onFromChange={setFrom}
-            onToChange={setTo}
-            onFocusFrom={() => setFocusedField('from')}
-            onFocusTo={() => setFocusedField('to')}
-            onSwap={() => {
-              setFrom(to);
-              setTo(from);
-              setActive('r1');
+            from={fromText}
+            to={toText}
+            onFromChange={(text) => handleTextChange('from', text)}
+            onToChange={(text) => handleTextChange('to', text)}
+            onFocusFrom={() => {
+              setFocusedField('from');
+              fetchPlaces(fromText);
             }}
+            onFocusTo={() => {
+              setFocusedField('to');
+              fetchPlaces(toText);
+            }}
+            onSwap={handleSwap}
           />
-          {focusedField && filteredLocations.length > 0 && (
+          {focusedField && placesSuggestions.length > 0 && (
             <View style={[styles.suggestionsBox, { backgroundColor: theme.surface, borderColor: theme.line, shadowColor: theme.shadowColor }]}>
               <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 200 }}>
-                {filteredLocations.map((loc, i) => (
+                {placesSuggestions.map((item, i) => (
                   <Pressable
-                    key={loc}
-                    onPress={() => handleSelectLocation(loc)}
+                    key={item.placeId || item.name}
+                    onPress={() => handleSelectLocation(item)}
                     style={[styles.suggestionItem, i > 0 && { borderTopWidth: 1, borderTopColor: theme.line }]}
                   >
                     <Icon name="pin" size={16} color={theme.textSoft} />
-                    <Text style={[styles.suggestionText, { color: theme.text }]}>{loc}</Text>
+                    <Text style={[styles.suggestionText, { color: theme.text }]} numberOfLines={1}>{item.name}</Text>
                   </Pressable>
                 ))}
               </ScrollView>
