@@ -1,9 +1,14 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Icon } from '@/components/fr/Icon';
-import { MapBase, type MapRoute, type TapPoint } from '@/components/fr/MapBase';
+import {
+  MapBase,
+  type MapBaseHandle,
+  type MapRoute,
+  type TapPoint,
+} from '@/components/fr/MapBase';
 import { RECOMMENDED } from '@/constants/fastroute-mock';
 import {
   FRTheme,
@@ -11,6 +16,7 @@ import {
   PALETTE,
   ROUTE_COLORS,
 } from '@/constants/fastroute-theme';
+import { useLocation } from '@/shared/hooks/useLocation';
 
 export type TrackingStyle = 'pins' | 'trace';
 
@@ -62,6 +68,18 @@ export function UserPersonalized({ theme, trackingStyle = 'pins' }: Props) {
   ]);
   const [showRec, setShowRec] = useState(true);
 
+  const mapRef = useRef<MapBaseHandle>(null);
+  const { coords, requestAndGet } = useLocation();
+
+  const goToMyLocation = useCallback(async () => {
+    const c = await requestAndGet();
+    if (!c) return;
+    mapRef.current?.animateToRegion(
+      { ...c, latitudeDelta: 0.02, longitudeDelta: 0.02 },
+      600,
+    );
+  }, [requestAndGet]);
+
   const personalPath =
     trackingStyle === 'trace' ? smoothPath(pts) : linePath(pts);
   const len = totalLen(pts);
@@ -99,13 +117,15 @@ export function UserPersonalized({ theme, trackingStyle = 'pins' }: Props) {
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
       <MapBase
+        ref={mapRef}
         theme={theme}
         routes={[...recRoutes, meRoute]}
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         interactive
         onTap={addPt}
         height="100%"
-        dim={theme.dark ? 0.12 : 0}>
+        dim={theme.dark ? 0.12 : 0}
+        showsUserLocation={coords !== null}>
         {pts.map((p, i) => {
           const isFirst = i === 0;
           const isLast = i === pts.length - 1;
@@ -164,6 +184,17 @@ export function UserPersonalized({ theme, trackingStyle = 'pins' }: Props) {
           );
         })}
       </MapBase>
+
+      <Pressable
+        onPress={goToMyLocation}
+        accessibilityRole="button"
+        accessibilityLabel="Centrar el mapa en mi ubicación"
+        style={[
+          styles.locationBtn,
+          { backgroundColor: theme.surface, borderColor: theme.line },
+        ]}>
+        <Icon name="target" size={20} color={theme.primary} />
+      </Pressable>
 
       <View
         style={[
@@ -410,4 +441,21 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   btnPrimaryText: { color: '#fff', fontFamily: FR_FONTS.display, fontSize: 14 },
+  locationBtn: {
+    position: 'absolute',
+    right: 16,
+    bottom: 320,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+    zIndex: 5,
+  },
 });

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 # Importar configuración, base de datos y rutas
 from app.core.config import settings
 from app.db.firebase import firebase_db
-from app.api.v1 import users
+from app.api.v1 import maps, users
 
 load_dotenv()
 
@@ -40,6 +40,7 @@ async def relax_referrer_policy(request: Request, call_next):
 
 # Registrar enrutadores (Rutas de la API)
 app.include_router(users.router, prefix="/api/v1")
+app.include_router(maps.router, prefix="/api/v1")
 
 @app.get("/health", status_code=200, tags=["Health"])
 def health_check():

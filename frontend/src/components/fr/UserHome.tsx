@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet } from '@/components/fr/BottomSheet';
@@ -6,10 +6,16 @@ import { Chip } from '@/components/fr/Chip';
 import { FromTo } from '@/components/fr/FromTo';
 import { HistoryPanel } from '@/components/fr/HistoryPanel';
 import { Icon } from '@/components/fr/Icon';
-import { MapBase, MapPin, type MapRoute } from '@/components/fr/MapBase';
+import {
+  MapBase,
+  MapPin,
+  type MapBaseHandle,
+  type MapRoute,
+} from '@/components/fr/MapBase';
 import { RouteCard, RouteCardLayout } from '@/components/fr/RouteCard';
 import { RECOMMENDED } from '@/constants/fastroute-mock';
 import { FRTheme, FR_FONTS } from '@/constants/fastroute-theme';
+import { useLocation } from '@/shared/hooks/useLocation';
 
 type Props = {
   theme: FRTheme;
@@ -21,6 +27,18 @@ export function UserHome({ theme, cardLayout = 'rich' }: Props) {
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState('Casa');
   const [to, setTo] = useState('Oficina Reforma');
+
+  const mapRef = useRef<MapBaseHandle>(null);
+  const { coords, requestAndGet } = useLocation();
+
+  const goToMyLocation = useCallback(async () => {
+    const c = await requestAndGet();
+    if (!c) return;
+    mapRef.current?.animateToRegion(
+      { ...c, latitudeDelta: 0.02, longitudeDelta: 0.02 },
+      600,
+    );
+  }, [requestAndGet]);
 
   const routes = useMemo<MapRoute[]>(
     () =>
@@ -38,7 +56,13 @@ export function UserHome({ theme, cardLayout = 'rich' }: Props) {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
-      <MapBase theme={theme} routes={routes} viewBox="0 0 326 200" height="100%">
+      <MapBase
+        ref={mapRef}
+        theme={theme}
+        routes={routes}
+        viewBox="0 0 326 200"
+        height="100%"
+        showsUserLocation={coords !== null}>
         <MapPin theme={theme} left="4%" top="75%" kind="origin" />
         <MapPin theme={theme} left="95%" top="15%" kind="dest" />
       </MapBase>
@@ -54,6 +78,17 @@ export function UserHome({ theme, cardLayout = 'rich' }: Props) {
           }}
         />
       </View>
+
+      <Pressable
+        onPress={goToMyLocation}
+        accessibilityRole="button"
+        accessibilityLabel="Centrar el mapa en mi ubicación"
+        style={[
+          styles.locationBtn,
+          { backgroundColor: theme.surface, borderColor: theme.line },
+        ]}>
+        <Icon name="target" size={20} color={theme.primary} />
+      </Pressable>
 
       <BottomSheet
         theme={theme}
@@ -133,4 +168,20 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   historyTitle: { fontFamily: FR_FONTS.display, fontSize: 16 },
+  locationBtn: {
+    position: 'absolute',
+    right: 16,
+    bottom: 296,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
 });

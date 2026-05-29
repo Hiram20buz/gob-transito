@@ -1,4 +1,12 @@
-import { ReactNode, memo, useCallback, useState } from 'react';
+import {
+  type ReactNode,
+  forwardRef,
+  memo,
+  useCallback,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import {
   type DimensionValue,
   type GestureResponderEvent,
@@ -8,7 +16,7 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import MapView, { type Region } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 
 import { FRTheme } from '@/constants/fastroute-theme';
@@ -36,6 +44,7 @@ type MapBaseProps = {
   showMap?: boolean;
   dim?: number;
   initialRegion?: Region;
+  showsUserLocation?: boolean;
 };
 
 export const CDMX_REGION: Region = {
@@ -45,19 +54,39 @@ export const CDMX_REGION: Region = {
   longitudeDelta: 0.08,
 };
 
-export const MapBase = memo(function MapBase({
-  theme,
-  routes = [],
-  children,
-  interactive = false,
-  onTap,
-  viewBox = '0 0 326 200',
-  height = '100%',
-  showMap = true,
-  dim = 0,
-  initialRegion = CDMX_REGION,
-}: MapBaseProps) {
+export type MapBaseHandle = {
+  animateToRegion: (region: Region, durationMs?: number) => void;
+};
+
+export const MapBase = memo(
+  forwardRef<MapBaseHandle, MapBaseProps>(function MapBase(
+    {
+      theme,
+      routes = [],
+      children,
+      interactive = false,
+      onTap,
+      viewBox = '0 0 326 200',
+      height = '100%',
+      showMap = true,
+      dim = 0,
+      initialRegion = CDMX_REGION,
+      showsUserLocation = false,
+    },
+    ref,
+  ) {
+  const mapRef = useRef<MapView | null>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      animateToRegion: (region, durationMs = 600) => {
+        mapRef.current?.animateToRegion(region, durationMs);
+      },
+    }),
+    [],
+  );
   const [vbW, vbH] = viewBox.split(' ').slice(2).map(Number);
 
   const handleLayout = useCallback((e: LayoutChangeEvent) => {
@@ -89,11 +118,14 @@ export const MapBase = memo(function MapBase({
       onLayout={handleLayout}>
       {showMap && (
         <MapView
+          ref={mapRef}
+          provider={PROVIDER_GOOGLE}
           style={StyleSheet.absoluteFill}
           initialRegion={initialRegion}
           pointerEvents={interactive ? 'none' : 'auto'}
           showsCompass={false}
           showsMyLocationButton={false}
+          showsUserLocation={showsUserLocation}
           toolbarEnabled={false}
           rotateEnabled={!interactive}
           scrollEnabled={!interactive}
@@ -175,7 +207,8 @@ export const MapBase = memo(function MapBase({
       )}
     </View>
   );
-});
+  }),
+);
 
 type MapPinProps = {
   theme: FRTheme;

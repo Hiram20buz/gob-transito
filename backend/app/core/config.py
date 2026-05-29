@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str | None = os.getenv("SMTP_PASSWORD")
     SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "noreply@fastroute.mx")
 
+    # Google Maps Platform (server key) — se usará en fases siguientes para
+    # proxy de Directions / Places / Geocoding. Restringir por IP en Cloud Console.
+    GOOGLE_MAPS_SERVER_API_KEY: str | None = None
+
     # Permite ignorar variables extras en el .env (como API_KEY, etc.)
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
