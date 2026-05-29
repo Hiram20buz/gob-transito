@@ -64,3 +64,27 @@ export function verifyRecoveryCode(payload: RecoveryVerifyPayload) {
 export function resetPassword(payload: PasswordResetPayload) {
   return api.post('/users/reset-password', payload);
 }
+
+export type ObstruccionFoto = {
+  uri: string;
+  name: string;
+  type: string;
+};
+
+export type ObstruccionPayload = {
+  user_id: string;
+  latitud: number;
+  longitud: number;
+  foto: ObstruccionFoto;
+};
+
+export function submitObstruccion(payload: ObstruccionPayload) {
+  const form = new FormData();
+  form.append('user_id', payload.user_id);
+  form.append('latitud', String(payload.latitud));
+  form.append('longitud', String(payload.longitud));
+  form.append('foto', payload.foto as unknown as Blob);
+  return api.post('/obstrucciones', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+}

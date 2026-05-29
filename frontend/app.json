@@ -41,6 +41,12 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Usamos tu ubicación para mostrar rutas desde donde estás."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Necesitamos acceso a tu cámara para fotografiar paradas de taxi."
+        }
       ]
     ],
     "experiments": {

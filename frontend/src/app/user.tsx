@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CameraFAB } from '@/components/fr/CameraFAB';
 import { SegTabs } from '@/components/fr/SegTabs';
 import { UserHome } from '@/components/fr/UserHome';
 import { UserMenu } from '@/components/fr/UserMenu';
@@ -13,6 +14,7 @@ import { useFRTheme } from '@/constants/fastroute-theme';
 export default function UserAppRoute() {
   const theme = useFRTheme();
   const [page, setPage] = useState(0);
+  const insets = useSafeAreaInsets();
 
   return (
     <SafeAreaView
@@ -43,6 +45,12 @@ export default function UserAppRoute() {
           <UserPersonalized theme={theme} trackingStyle="pins" />
         )}
       </View>
+
+      <CameraFAB
+        theme={theme}
+        userId={TEST_USERS.user.id}
+        bottomOffset={24 + insets.bottom}
+      />
     </SafeAreaView>
   );
 }

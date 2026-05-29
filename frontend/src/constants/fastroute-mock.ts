@@ -136,6 +136,6 @@ export const FILE_TINT: Record<Report['type'], string> = {
 };
 
 export const TEST_USERS = {
-  user: { email: 'usuario@fastroute.mx', password: 'usuario123', name: 'Jorge A.' },
-  admin: { email: 'admin@fastroute.mx', password: 'admin123', name: 'Admin · Operaciones' },
+  user: { id: 'user_mock_001', email: 'usuario@fastroute.mx', password: 'usuario123', name: 'Jorge A.' },
+  admin: { id: 'admin_mock_001', email: 'admin@fastroute.mx', password: 'admin123', name: 'Admin · Operaciones' },
 } as const;
