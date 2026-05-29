@@ -6,6 +6,14 @@ class Settings(BaseSettings):
     PORT: int = int(os.getenv("PORT", 8000))
     
     FIREBASE_CREDENTIALS_PATH: str = "firekeys.json"
+    FIREBASE_STORAGE_BUCKET: str | None = os.getenv("FIREBASE_STORAGE_BUCKET")
+    
+    # Cloudflare R2 / AWS S3 Config
+    AWS_ACCESS_KEY_ID: str | None = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY: str | None = os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_SESSION_TOKEN: str | None = os.getenv("AWS_SESSION_TOKEN")
+    BUCKET_URL: str | None = os.getenv("BUCKET_URL") # S3/R2 endpoint URL
+    BUCKET_NAME: str = os.getenv("BUCKET_NAME", "gob-test")
     
     # Configuración de correos (SMTP)
     SMTP_HOST: str | None = os.getenv("SMTP_HOST")
