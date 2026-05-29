@@ -97,6 +97,7 @@ export function UserPersonalized({ theme, trackingStyle = 'pins' }: Props) {
             path: r.path.replace(/(\d+),(\d+)/g, (_m, a: string, b: string) =>
               `${((+a / 326) * VB_W).toFixed(0)},${((+b / 200) * VB_H).toFixed(0)}`,
             ),
+            coordinates: r.coordinates,
           }))
         : [],
     [showRec],

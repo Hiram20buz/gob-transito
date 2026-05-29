@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, TextInput } from 'react-native';
 
 import { Icon } from '@/components/fr/Icon';
 import { FRTheme, FR_FONTS } from '@/constants/fastroute-theme';
@@ -8,9 +8,15 @@ type Props = {
   from: string;
   to: string;
   onSwap?: () => void;
+  onFromChange?: (text: string) => void;
+  onToChange?: (text: string) => void;
+  onFocusFrom?: () => void;
+  onFocusTo?: () => void;
+  onBlurFrom?: () => void;
+  onBlurTo?: () => void;
 };
 
-export function FromTo({ theme, from, to, onSwap }: Props) {
+export function FromTo({ theme, from, to, onSwap, onFromChange, onToChange, onFocusFrom, onFocusTo, onBlurFrom, onBlurTo }: Props) {
   return (
     <View
       style={[
@@ -28,9 +34,27 @@ export function FromTo({ theme, from, to, onSwap }: Props) {
         <Icon name="pin" size={15} color={theme.gold} fill={theme.gold} stroke={0} />
       </View>
       <View style={styles.col}>
-        <Text style={[styles.row, { color: theme.text }]} numberOfLines={1}>{from}</Text>
+        <TextInput
+          style={[styles.row, { color: theme.text }]}
+          value={from}
+          onChangeText={onFromChange}
+          onFocus={onFocusFrom}
+          onBlur={onBlurFrom}
+          placeholder="Ubicación de origen"
+          placeholderTextColor={theme.textSoft}
+          returnKeyType="search"
+        />
         <View style={[styles.divider, { backgroundColor: theme.line }]} />
-        <Text style={[styles.row, { color: theme.text }]} numberOfLines={1}>{to}</Text>
+        <TextInput
+          style={[styles.row, { color: theme.text }]}
+          value={to}
+          onChangeText={onToChange}
+          onFocus={onFocusTo}
+          onBlur={onBlurTo}
+          placeholder="Ubicación de destino"
+          placeholderTextColor={theme.textSoft}
+          returnKeyType="search"
+        />
       </View>
       <Pressable
         onPress={onSwap}
