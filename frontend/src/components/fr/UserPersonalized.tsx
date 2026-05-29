@@ -62,9 +62,10 @@ function totalLen(pts: TapPoint[]) {
 
 export function UserPersonalized({ theme, trackingStyle = 'pins' }: Props) {
   const [pts, setPts] = useState<TapPoint[]>([
-    { x: 40, y: 430 },
-    { x: 150, y: 300 },
-    { x: 250, y: 330 },
+    { x: 195, y: 200 }, // Pixeland Arcade (Aprox Centro)
+    { x: 237, y: 256 }, // La Cacho
+    { x: 226, y: 263 }, // Casa
+    { x: 250, y: 310 }, // Rumbo al sur
   ]);
   const [showRec, setShowRec] = useState(true);
 
@@ -89,16 +90,34 @@ export function UserPersonalized({ theme, trackingStyle = 'pins' }: Props) {
   const recRoutes = useMemo<MapRoute[]>(
     () =>
       showRec
-        ? RECOMMENDED.map((r) => ({
-            id: r.id,
-            color: r.color,
-            width: 4,
-            active: false,
-            path: r.path.replace(/(\d+),(\d+)/g, (_m, a: string, b: string) =>
-              `${((+a / 326) * VB_W).toFixed(0)},${((+b / 200) * VB_H).toFixed(0)}`,
-            ),
-            coordinates: r.coordinates,
-          }))
+        ? RECOMMENDED.map((r) => {
+            // Check if the path is a valid SVG path or a Google encoded polyline
+            const isGooglePolyline = !r.path.startsWith('M');
+            
+            // If it's a google polyline from the mock file, we shouldn't try to parse it as SVG
+            // Instead, we just pass an empty path and let the Polyline component handle the coordinates array
+            if (isGooglePolyline) {
+              return {
+                id: r.id,
+                color: r.color,
+                width: 4,
+                active: false,
+                path: '', // Empty path for SVG, we rely on coordinates
+                coordinates: r.coordinates,
+              };
+            }
+
+            return {
+              id: r.id,
+              color: r.color,
+              width: 4,
+              active: false,
+              path: r.path.replace(/(\d+),(\d+)/g, (_m, a: string, b: string) =>
+                `${((+a / 326) * VB_W).toFixed(0)},${((+b / 200) * VB_H).toFixed(0)}`,
+              ),
+              coordinates: r.coordinates,
+            };
+          })
         : [],
     [showRec],
   );
@@ -279,14 +298,6 @@ export function UserPersonalized({ theme, trackingStyle = 'pins' }: Props) {
             accessibilityRole="button"
             accessibilityLabel="Enviar ruta a revisión"
             style={styles.btnPrimaryWrap}>
-            <LinearGradient
-              colors={[theme.primary, PALETTE.guindaDk]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.btnPrimary}>
-              <Icon name="check" size={17} color="#fff" stroke={2.6} />
-              <Text style={styles.btnPrimaryText}>Enviar a revisión</Text>
-            </LinearGradient>
           </Pressable>
         </View>
       </View>

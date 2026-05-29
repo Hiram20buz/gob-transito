@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, Keyboard } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View, Keyboard, Alert, Platform } from 'react-native';
+import polyline from '@mapbox/polyline';
 
 import { BottomSheet } from '@/components/fr/BottomSheet';
 import { Chip } from '@/components/fr/Chip';
@@ -33,6 +34,97 @@ const MOCK_LOCATIONS_DATA = [
   { name: 'La Cacho', coords: { latitude: 32.5200, longitude: -117.0250 } },
   { name: 'Hipódromo', coords: { latitude: 32.5050, longitude: -116.9950 } },
 ];
+
+// Obtenemos la llave según la plataforma donde estamos corriendo
+const GOOGLE_API_KEY = Platform.select({
+  ios: process.env.EXPO_PUBLIC_IOS_GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_KEY,
+  android: process.env.EXPO_PUBLIC_ANDROID_GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_KEY,
+  default: process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_KEY,
+});
+
+async function fetchGoogleDirections(
+  start: { latitude: number; longitude: number },
+  end: { latitude: number; longitude: number }
+): Promise<Recommended[]> {
+  const dist = Math.sqrt(Math.pow(end.latitude - start.latitude, 2) + Math.pow(end.longitude - start.longitude, 2)) * 111;
+
+  if (dist < 0.1) {
+    return [
+      { id: 'r1', name: 'Misma ubicación', tag: '-', icon: 'target', color: ROUTE_COLORS.recA, eta: 0, dist: 0, traffic: 'fluido', trafficLvl: 0, cost: 0, path: '', coordinates: [start, end] }
+    ];
+  }
+
+  // Si no hay API KEY, devolvemos las rutas matemáticas curvadas de antes
+  if (!GOOGLE_API_KEY || GOOGLE_API_KEY === 'TU_API_KEY_AQUI') {
+    console.warn('Falta GOOGLE_API_KEY. Usando rutas simuladas.');
+    // Alert.alert('Falta API Key', 'No se encontró la llave de Google Maps en las variables de entorno (.env). Se mostrará una línea simulada.');
+    return generateMockRoutes(start, end);
+  }
+
+  try {
+    const origin = `${start.latitude},${start.longitude}`;
+    const destination = `${end.latitude},${end.longitude}`;
+    // Pedimos rutas alternativas (alternatives=true)
+    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&alternatives=true&key=${GOOGLE_API_KEY}&language=es`;
+    
+    const response = await fetch(url);
+    const result = await response.json();
+
+    if (result.status !== 'OK') {
+      console.warn('Google Directions API error:', result.status, result.error_message);
+      
+      // Mostrar alerta con el motivo del error para diagnosticar por qué la API Key falla
+      /*
+      Alert.alert(
+        'Falla en API de Google Maps', 
+        `Código: ${result.status}\nMensaje: ${result.error_message || 'Revisa permisos de Directions API'}\n\nLa app dibujará rutas curvas simuladas.`
+      );
+      */
+      
+      return generateMockRoutes(start, end);
+    }
+
+    const routes: Recommended[] = result.routes.map((r: any, index: number) => {
+      const leg = r.legs[0];
+      // Google devuelve la polilínea codificada; usamos la librería para decodificarla
+      const decodedCoords = polyline.decode(r.overview_polyline.points).map(point => ({
+        latitude: point[0],
+        longitude: point[1]
+      }));
+
+      // Asignar colores, iconos y nombres según la opción
+      const id = `r${index + 1}`;
+      const color = index === 0 ? ROUTE_COLORS.recA : index === 1 ? ROUTE_COLORS.recB : ROUTE_COLORS.recC;
+      const icon = index === 0 ? 'bolt' : index === 1 ? 'money' : 'leaf';
+      const tag = index === 0 ? 'Rápida' : index === 1 ? 'Económica' : 'Alterna';
+      const traffic = index === 0 ? 'fluido' : index === 1 ? 'moderado' : 'denso';
+      const trafficLvl = index === 0 ? 0 : index === 1 ? 1 : 2;
+
+      return {
+        id,
+        name: r.summary || `Ruta ${index + 1}`,
+        tag,
+        icon,
+        color,
+        // Convertimos los segundos a minutos
+        eta: Math.ceil((leg.duration?.value || 0) / 60),
+        // Convertimos metros a kilómetros
+        dist: Number(((leg.distance?.value || 0) / 1000).toFixed(1)),
+        traffic: traffic as any,
+        trafficLvl: trafficLvl as any,
+        cost: index === 0 ? 38 : index === 1 ? 22 : 18,
+        path: r.overview_polyline.points, // Guardamos la string original por si acaso
+        coordinates: decodedCoords,
+      };
+    });
+
+    return routes;
+
+  } catch (err) {
+    console.error('Error fetching directions:', err);
+    return generateMockRoutes(start, end);
+  }
+}
 
 function generatePathCoords(start: {latitude: number, longitude: number}, end: {latitude: number, longitude: number}, offsetScale: number, numPoints = 30) {
   const coords = [];
@@ -130,19 +222,26 @@ export function UserHome({ theme, cardLayout = 'rich' }: Props) {
   const mapRef = useRef<MapBaseHandle>(null);
   const { coords, requestAndGet } = useLocation();
 
-  const goToMyLocation = useCallback(async () => {
-    const c = await requestAndGet();
-    if (!c) return;
-    mapRef.current?.animateToRegion(
-      { ...c, latitudeDelta: 0.02, longitudeDelta: 0.02 },
-      600,
-    );
-  }, [requestAndGet]);
-
   const startLoc = useMemo(() => MOCK_LOCATIONS_DATA.find(l => l.name === from) ?? MOCK_LOCATIONS_DATA[0], [from]);
   const endLoc = useMemo(() => MOCK_LOCATIONS_DATA.find(l => l.name === to) ?? MOCK_LOCATIONS_DATA[1], [to]);
 
-  const currentRoutes = useMemo(() => generateMockRoutes(startLoc.coords, endLoc.coords), [startLoc, endLoc]);
+  const [currentRoutes, setCurrentRoutes] = useState<Recommended[]>(() => 
+    generateMockRoutes(startLoc.coords, endLoc.coords)
+  );
+
+  useEffect(() => {
+    let isActive = true;
+    
+    // Mostramos rutas simuladas rápido mientras se cargan las reales
+    const initialRoutes = generateMockRoutes(startLoc.coords, endLoc.coords);
+    setCurrentRoutes(initialRoutes);
+
+    fetchGoogleDirections(startLoc.coords, endLoc.coords).then(routes => {
+      if (isActive) setCurrentRoutes(routes);
+    });
+
+    return () => { isActive = false; };
+  }, [startLoc, endLoc]);
 
   const routes = useMemo<MapRoute[]>(
     () =>
@@ -206,6 +305,15 @@ export function UserHome({ theme, cardLayout = 'rich' }: Props) {
       altitude: 10000,
     }, 1000);
   }, [startLoc, endLoc]);
+
+  const goToMyLocation = useCallback(async () => {
+    const c = await requestAndGet();
+    if (!c) return;
+    mapRef.current?.animateToRegion(
+      { ...c, latitudeDelta: 0.02, longitudeDelta: 0.02 },
+      600,
+    );
+  }, [requestAndGet]);
 
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
