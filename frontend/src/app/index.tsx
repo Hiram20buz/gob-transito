@@ -23,9 +23,14 @@ export default function AuthRoute() {
         correo_electronico: email,
         password: pass,
       });
-      
-      // Navegar a la pantalla de user
-      router.replace('/user');
+
+      const userRole = response?.data?.role;
+
+      if (userRole === 'admin') {
+        router.replace('/admin');
+      } else {
+        router.replace('/user');
+      }
     } catch (e: any) {
       // El backend nos devuelve un HTTP 401 si las credenciales fallan, 
       // y configuramos el backend para devolver exactamente "error al iniciar sesion"
